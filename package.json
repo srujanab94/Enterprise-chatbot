@@ -1,5 +1,3 @@
-# Create package.json with ONLY JSON content (no comments)
-cat > package.json << 'EOF'
 {
   "name": "enterprise-chatbot-frontend",
   "version": "1.0.0",
