@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Knowledge Assistant</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            color: white;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .bot-avatar {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .header-info h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .header-info p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .connection-status {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            animation: fadeInUp 0.3s ease;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 14px;
+        }
+
+        .message.bot .message-avatar {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            position: relative;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            color: white;
+        }
+
+        .source-info {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .source-badge {
+            background: #4CAF50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .chat-input:focus {
+            border-color: #4CAF50;
+        }
+
+        .send-button {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: transform 0.2s ease;
+        }
+
+        .send-button:hover {
+            transform: scale(1.1);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 5px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .quick-action {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .quick-action:hover {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .welcome-message h2 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .capabilities {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .capability-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: left;
+        }
+
+        .capability-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .capability-card h3 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .capability-card p {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-left">
+                <div class="bot-avatar">🤖</div>
+                <div class="header-info">
+                    <h1>Enterprise Knowledge Assistant</h1>
+                    <p>Connected to SharePoint & Confluence • Powered by AI</p>
+                </div>
+            </div>
+            <div class="connection-status">
+                <div class="status-indicator"></div>
+                <span>Online</span>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                <h2>Welcome to your Enterprise Knowledge Assistant</h2>
+                <p>I can help you find information from your SharePoint documents and Confluence pages.</p>
+                
+                <div class="capabilities">
+                    <div class="capability-card">
+                        <div class="capability-icon">📄</div>
+                        <h3>SharePoint Integration</h3>
+                        <p>Search through documents, policies, and shared files</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">📋</div>
+                        <h3>Confluence Knowledge</h3>
+                        <p>Access team wikis, procedures, and documentation</p>
+                    </div>
+                    <div class="capability-card">
+                        <div class="capability-icon">🧠</div>
+                        <h3>AI-Powered Insights</h3>
+                        <p>Get intelligent summaries and contextual answers</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="message-avatar" style="background: linear-gradient(135deg, #4CAF50, #45a049);">🤖</div>
+            <div>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="quick-actions">
+                <div class="quick-action" onclick="sendQuickMessage('What are our latest company policies?')">📋 Company Policies</div>
+                <div class="quick-action" onclick="sendQuickMessage('Show me the project documentation for Q4')">📊 Q4 Projects</div>
+                <div class="quick-action" onclick="sendQuickMessage('Find information about employee benefits')">🏥 Employee Benefits</div>
+                <div class="quick-action" onclick="sendQuickMessage('What are the latest product updates?')">🚀 Product Updates</div>
+            </div>
+            <div class="chat-input-wrapper">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Ask me anything about your company knowledge base..." />
+                <button class="send-button" id="sendButton" onclick="sendMessage()">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample knowledge base data (simulating SharePoint/Confluence)
+        const knowledgeBase = {
+            sharepoint: [
+                {
+                    title: "Employee Handbook 2024",
+                    content: "Our comprehensive employee handbook covers policies, benefits, code of conduct, and workplace guidelines. Updated for 2024 with new remote work policies and mental health resources.",
+                    source: "SharePoint",
+                    url: "/sites/hr/documents/employee-handbook-2024.pdf"
+                },
+                {
+                    title: "Q4 Financial Results",
+                    content: "Q4 2024 financial performance showed 15% revenue growth, driven by strong product adoption and successful market expansion initiatives.",
+                    source: "SharePoint",
+                    url: "/sites/finance/reports/q4-2024-results.xlsx"
+                },
+                {
+                    title: "Product Roadmap 2025",
+                    content: "Our 2025 product roadmap focuses on AI integration, mobile optimization, and enhanced user experience across all platforms.",
+                    source: "SharePoint",
+                    url: "/sites/product/roadmap/2025-strategy.pptx"
+                }
+            ],
+            confluence: [
+                {
+                    title: "API Documentation",
+                    content: "Complete API documentation including endpoints, authentication methods, rate limits, and integration examples for developers.",
+                    source: "Confluence",
+                    url: "/wiki/spaces/DEV/pages/api-docs"
+                },
+                {
+                    title: "Incident Response Procedures",
+                    content: "Step-by-step incident response procedures covering severity levels, escalation paths, communication protocols, and post-incident reviews.",
+                    source: "Confluence",
+                    url: "/wiki/spaces/OPS/pages/incident-response"
+                },
+                {
+                    title: "Onboarding Checklist",
+                    content: "New employee onboarding checklist including required training, system access requests, and first-week activities.",
+                    source: "Confluence",
+                    url: "/wiki/spaces/HR/pages/onboarding"
+                }
+            ]
+        };
+
+        // Sample responses for different query types
+        const responseTemplates = {
+            policies: "Based on our latest company policies from SharePoint, here's what I found:",
+            projects: "I've searched through our project documentation in Confluence. Here are the relevant details:",
+            benefits: "According to our HR documentation, here's information about employee benefits:",
+            general: "I found relevant information from our knowledge base:"
+        };
+
+        function addMessage(content, isUser = false, source = null) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const welcomeMessage = messagesContainer.querySelector('.welcome-message');
+            
+            if (welcomeMessage) {
+                welcomeMessage.remove();
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            let sourceInfo = '';
+            if (source && !isUser) {
+                sourceInfo = `
+                    <div class="source-info">
+                        <span class="source-badge">${source.source}</span>
+                        <span>${source.title}</span>
+                    </div>
+                `;
+            }
+
+            messageDiv.innerHTML = `
+                <div class="message-avatar">${isUser ? 'You' : '🤖'}</div>
+                <div class="message-content">
+                    ${content}
+                    ${sourceInfo}
+                </div>
+            `;
+
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showTyping() {
+            document.getElementById('typingIndicator').style.display = 'flex';
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTyping() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
+        function searchKnowledgeBase(query) {
+            const lowerQuery = query.toLowerCase();
+            let results = [];
+
+            // Search SharePoint
+            knowledgeBase.sharepoint.forEach(item => {
+                if (item.content.toLowerCase().includes(lowerQuery) || 
+                    item.title.toLowerCase().includes(lowerQuery)) {
+                    results.push(item);
+                }
+            });
+
+            // Search Confluence
+            knowledgeBase.confluence.forEach(item => {
+                if (item.content.toLowerCase().includes(lowerQuery) || 
+                    item.title.toLowerCase().includes(lowerQuery)) {
+                    results.push(item);
+                }
+            });
+
+            return results;
+        }
+
+        function generateResponse(query) {
+            const results = searchKnowledgeBase(query);
+            const lowerQuery = query.toLowerCase();
+
+            if (results.length === 0) {
+                return {
+                    response: "I couldn't find specific information about that in our knowledge base. However, I can help you search through our SharePoint documents and Confluence pages. Try being more specific or use different keywords.",
+                    source: null
+                };
+            }
+
+            // Use the first relevant result
+            const primaryResult = results[0];
+            
+            let responsePrefix = responseTemplates.general;
+            if (lowerQuery.includes('policy') || lowerQuery.includes('policies')) {
+                responsePrefix = responseTemplates.policies;
+            } else if (lowerQuery.includes('project')) {
+                responsePrefix = responseTemplates.projects;
+            } else if (lowerQuery.includes('benefit')) {
+                responsePrefix = responseTemplates.benefits;
+            }
+
+            const response = `${responsePrefix}\n\n${primaryResult.content}`;
+            
+            return {
+                response: response,
+                source: primaryResult
+            };
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const sendButton = document.getElementById('sendButton');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Add user message
+            addMessage(message, true);
+            
+            // Clear input and disable send button
+            input.value = '';
+            sendButton.disabled = true;
+
+            // Show typing indicator
+            showTyping();
+
+            // Simulate processing delay
+            setTimeout(() => {
+                hideTyping();
+                
+                // Generate and add bot response
+                const result = generateResponse(message);
+                addMessage(result.response, false, result.source);
+                
+                // Re-enable send button
+                sendButton.disabled = false;
+                input.focus();
+            }, 1500 + Math.random() * 1000);
+        }
+
+        function sendQuickMessage(message) {
+            document.getElementById('chatInput').value = message;
+            sendMessage();
+        }
+
+        // Event listeners
+        document.getElementById('chatInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Demo mode - add some sample messages after a delay
+        setTimeout(() => {
+            if (document.querySelector('.welcome-message')) {
+                addMessage("Hi! I'm your Enterprise Knowledge Assistant. I can help you find information from SharePoint and Confluence. What would you like to know?", false);
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
