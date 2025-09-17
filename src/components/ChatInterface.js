@@ -29,7 +29,7 @@ const ChatInterface = () => {
     scrollToBottom();
   }, [messages]);
 
-  const checkConnection = async () => {
+  const checkConnection = useCallback(async () => {
     const isConnected = await chatService.validateConnection();
     const isValidKey = await chatService.validateAPIKey();
     
