@@ -1,4 +1,4 @@
-# In root directory (/workspaces/Enterprise-chatbot)
+# Create a proper JSON package.json (no comments allowed)
 cat > package.json << 'EOF'
 {
   "name": "enterprise-chatbot-frontend",
