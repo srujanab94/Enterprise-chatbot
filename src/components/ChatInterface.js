@@ -23,7 +23,7 @@ const ChatInterface = () => {
   useEffect(() => {
     checkConnection();
     scrollToBottom();
-  }, []);
+  }, [checkConnection]);
 
   useEffect(() => {
     scrollToBottom();
