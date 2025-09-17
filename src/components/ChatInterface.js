@@ -1,4 +1,3 @@
-// Enhanced ChatInterface component with real OpenAI integration
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import ChatService from '../services/ChatService';
@@ -20,16 +19,7 @@ const ChatInterface = () => {
   const messagesEndRef = useRef(null);
   const chatService = useRef(new ChatService()).current;
 
-  useEffect(() => {
-    checkConnection();
-    scrollToBottom();
-  }, [checkConnection]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const checkConnection = useCallback(async () => {
+  const checkConnection = async () => {
     const isConnected = await chatService.validateConnection();
     const isValidKey = await chatService.validateAPIKey();
     
@@ -45,6 +35,15 @@ const ChatInterface = () => {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    checkConnection();
+    scrollToBottom();
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -91,10 +90,10 @@ const ChatInterface = () => {
 
     setMessages(prev => [...prev, botMessage]);
 
-    const stream = await chatService.sendMessage(message, true);
-    const reader = stream.getReader();
-
     try {
+      const stream = await chatService.sendMessage(message, true);
+      const reader = stream.getReader();
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -110,7 +109,6 @@ const ChatInterface = () => {
         );
       }
 
-      // Mark streaming as complete
       setMessages(prev => 
         prev.map(msg => 
           msg.id === botMessage.id 
@@ -119,15 +117,15 @@ const ChatInterface = () => {
         )
       );
 
-      // Update conversation history
       chatService.addToHistory('user', message);
       const finalMessage = messages.find(msg => msg.id === botMessage.id);
       if (finalMessage) {
         chatService.addToHistory('assistant', finalMessage.content);
       }
 
-    } finally {
       reader.releaseLock();
+    } catch (error) {
+      console.error('Streaming error:', error);
     }
   };
 
@@ -181,7 +179,6 @@ const ChatInterface = () => {
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Header with connection status */}
       <div className="flex justify-between items-center p-4 border-b bg-gray-50">
         <h2 className="text-xl font-semibold text-gray-800">
           Enterprise Assistant
@@ -203,7 +200,6 @@ const ChatInterface = () => {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (
           <div
@@ -237,7 +233,6 @@ const ChatInterface = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div className="p-4 border-t bg-gray-50">
         <div className="flex space-x-2">
           <textarea
