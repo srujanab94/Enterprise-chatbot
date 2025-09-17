@@ -73,7 +73,7 @@ app.post('/api/chat', async (req, res) => {
     const completion = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
       messages: messages,
-      max_tokens: 1000,
+      max_tokens: 200,
       temperature: 0.7,
       stream: true,
     });
