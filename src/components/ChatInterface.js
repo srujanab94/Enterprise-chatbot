@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import ChatService from '../services/ChatService';
 
@@ -19,7 +19,7 @@ const ChatInterface = () => {
   const messagesEndRef = useRef(null);
   const chatService = useRef(new ChatService()).current;
 
-  const checkConnection = async () => {
+  const checkConnection = useCallback(async () => {
     const isConnected = await chatService.validateConnection();
     const isValidKey = await chatService.validateAPIKey();
     
@@ -30,7 +30,7 @@ const ChatInterface = () => {
     } else {
       setConnectionStatus('disconnected');
     }
-  };
+  }, [chatService]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -39,7 +39,7 @@ const ChatInterface = () => {
   useEffect(() => {
     checkConnection();
     scrollToBottom();
-  }, []);
+  }, [checkConnection]);
 
   useEffect(() => {
     scrollToBottom();
