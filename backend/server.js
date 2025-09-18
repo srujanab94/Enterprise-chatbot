@@ -1,14 +1,22 @@
-// server.js - Backend API service for OpenAI integration
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
-require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middleware
-app.use(cors());
+// Fixed CORS configuration for Codespaces
+app.use(cors({
+  origin: [
+    'https://ideal-space-sniffle-w4g6r7v7r7phg467-3000.app.github.dev',
+    'http://localhost:3000',
+    'https://localhost:3000'
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
+
 app.use(express.json());
 
 // Initialize OpenAI
@@ -16,9 +24,44 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Knowledge base for your enterprise chatbot
-const COMPLIANCE_KNOWLEDGE = `
-You are an expert Enterprise Compliance and AFS Payment Gateway Assistant. You have comprehensive knowledge in:
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  console.log('Health check called from:', req.headers.origin);
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    message: 'Backend server is running!'
+  });
+});
+
+// API key validation endpoint
+app.get('/api/validate-key', async (req, res) => {
+  try {
+    console.log('Validate key called from:', req.headers.origin);
+    const models = await openai.models.list();
+    res.json({ valid: true, modelCount: models.data.length });
+  } catch (error) {
+    console.error('API key validation failed:', error.message);
+    res.json({ valid: false, error: error.message });
+  }
+});
+
+// Simple chat endpoint
+app.post('/api/chat/simple', async (req, res) => {
+  try {
+    const { message } = req.body;
+    console.log('Chat request from:', req.headers.origin, 'Message:', message);
+
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert Enterprise Compliance and AFS Payment Gateway Assistant. You have comprehensive knowledge in:
 
 1. COMPLIANCE AREAS:
 - Anti-Money Laundering (AML) regulations
@@ -36,150 +79,82 @@ You are an expert Enterprise Compliance and AFS Payment Gateway Assistant. You h
 - Error handling and troubleshooting
 - Merchant onboarding procedures
 
-Always provide detailed, accurate responses based on current regulatory requirements and best practices.
-`;
+Always provide detailed, accurate responses based on current regulatory requirements and best practices.`
+        },
+        { role: 'user', content: message }
+      ],
+      max_tokens: 500,
+    });
 
-// Chat endpoint with streaming support
+    res.json({
+      response: completion.choices[0].message.content,
+      usage: completion.usage
+    });
+
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
+// Streaming chat endpoint
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message, conversationHistory = [] } = req.body;
+    const { message } = req.body;
+    console.log('Streaming chat request from:', req.headers.origin, 'Message:', message);
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Prepare conversation context
-    const messages = [
-      {
-        role: 'system',
-        content: COMPLIANCE_KNOWLEDGE
-      },
-      // Add conversation history
-      ...conversationHistory.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      {
-        role: 'user',
-        content: message
-      }
-    ];
-
-    // Set response headers for streaming
+    // Set headers for streaming
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
     const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
-      messages: messages,
-      max_tokens: 200,
-      temperature: 0.7,
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert Enterprise Compliance and AFS Payment Gateway Assistant. You have comprehensive knowledge in compliance regulations and payment processing. Provide clear, concise responses.`
+        },
+        { role: 'user', content: message }
+      ],
+      max_tokens: 500,
       stream: true,
     });
-
-    let fullResponse = '';
 
     for await (const chunk of completion) {
       const content = chunk.choices[0]?.delta?.content || '';
       if (content) {
-        fullResponse += content;
         res.write(content);
       }
     }
 
     res.end();
-    
-    // Log the conversation (optional)
-    console.log('User:', message);
-    console.log('Assistant:', fullResponse);
+    console.log('Streaming response completed');
 
   } catch (error) {
-    console.error('OpenAI API Error:', error);
-    
-    if (error.status === 401) {
-      return res.status(401).json({ 
-        error: 'Invalid OpenAI API key. Please check your configuration.' 
-      });
-    }
-    
-    if (error.status === 429) {
-      return res.status(429).json({ 
-        error: 'Rate limit exceeded. Please try again later.' 
-      });
-    }
-    
-    res.status(500).json({ 
-      error: 'Failed to process request. Please try again.' 
-    });
+    console.error('Streaming chat error:', error);
+    res.status(500).json({ error: 'Failed to process request' });
   }
 });
 
-// Non-streaming chat endpoint (alternative)
-app.post('/api/chat/simple', async (req, res) => {
-  try {
-    const { message, conversationHistory = [] } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: COMPLIANCE_KNOWLEDGE
-      },
-      ...conversationHistory.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      })),
-      {
-        role: 'user',
-        content: message
-      }
-    ];
-
-    const completion = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
-      messages: messages,
-      max_tokens: 1000,
-      temperature: 0.7,
-    });
-
-    const response = completion.choices[0].message.content;
-
-    res.json({
-      response: response,
-      usage: completion.usage
-    });
-
-  } catch (error) {
-    console.error('OpenAI API Error:', error);
-    res.status(500).json({ 
-      error: 'Failed to process request. Please try again.' 
-    });
-  }
-});
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
-
-// API key validation endpoint
-app.get('/api/validate-key', async (req, res) => {
-  try {
-    const models = await openai.models.list();
-    res.json({ valid: true, modelCount: models.data.length });
-  } catch (error) {
-    res.json({ valid: false, error: error.message });
-  }
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Enterprise Chatbot Backend API',
+    endpoints: ['/api/health', '/api/validate-key', '/api/chat/simple'],
+    origin: req.headers.origin
+  });
 });
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📡 OpenAI Model: ${process.env.OPENAI_MODEL || 'gpt-4-turbo-preview'}`);
+  console.log(`📡 OpenAI Model: gpt-3.5-turbo`);
   console.log(`🔑 API Key configured: ${process.env.OPENAI_API_KEY ? 'Yes' : 'No'}`);
+  console.log(`🌐 CORS enabled for Codespaces`);
 });
 
 module.exports = app;
